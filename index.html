@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<!-- Angiver at dokumentet er HTML5 -->
+<html lang="da">
+<!-- Sproget er dansk -->
+
+<head>
+    <meta charset="UTF-8">
+    <!-- Understøtter danske bogstaver (æ, ø, å) -->
+
+    <title>Glostrup Hospital</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Gør siden responsiv på mobil og tablet -->
+
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Chart.js – bruges til grafer -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Flask static CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<!-- =========================
+     HEADER
+========================= -->
+<header>
+    IoMT – Avanceret Patientovervågning
+</header>
+
+<div class="container">
+
+    <!-- =========================
+         STATUS-KORT
+    ========================= -->
+    <div class="status-card card">
+        <h2>Patientstatus</h2>
+
+        <!-- Viser patientens status (Normal / Advarsel / Kritisk) -->
+        <div id="statusText" class="status-text">Indlæser...</div>
+
+        <!-- Liste med problemer (fx feber, lav SpO2) -->
+        <ul id="issuesList"></ul>
+    </div>
+
+    <!-- =========================
+         LIVE VÆRDIER
+    ========================= -->
+    <div class="grid-3">
+        <div class="card">
+            <span class="label">Puls (BPM)</span>
+            <div id="bpm" class="value">--</div>
+        </div>
+
+        <div class="card">
+            <span class="label">SpO₂ (%)</span>
+            <div id="spo2" class="value">--</div>
+        </div>
+
+        <div class="card">
+            <span class="label">Temperatur (°C)</span>
+            <div id="temp" class="value">--</div>
+        </div>
+    </div>
+
+    <!-- =========================
+         GRAF-SEKTION
+    ========================= -->
+    <div class="card" style="margin-top:35px;">
+
+        <!-- Graf-indstillinger -->
+        <div class="graph-controls">
+
+            <!-- Valg af graf-type -->
+            <label>Graf-type:</label>
+            <select id="chartTypeSelector">
+                <option value="line">Linjegraf</option>
+                <option value="bar">Søjlediagram</option>
+            </select>
+
+            <!-- Valg af tidsperiode -->
+            <label style="margin-left:20px;">Periode:</label>
+            <select id="timeSelector">
+                <option value="10">Sidste 10 min</option>
+                <option value="30">Sidste 30 min</option>
+                <option value="60">Sidste 1 time</option>
+                <option value="0">Alle</option>
+            </select>
+        </div>
+
+        <!-- Canvas bruges af Chart.js -->
+        <canvas id="chart"></canvas>
+    </div>
+
+</div>
+
+<!-- =========================
+     JAVASCRIPT
+========================= -->
+<script>
+/*
+  chart: reference til Chart.js objektet
+  lastRenderedData: bruges til at gen-tegne grafen
+*/
+let chart;
+let lastRenderedData = null;
+
+/*
+  Når graf-typen ændres (line/bar),
+  gen-tegnes grafen med samme data
+*/
+document.getElementById("chartTypeSelector")
+    .addEventListener("change", () => {
+        if (lastRenderedData) renderChart(lastRenderedData);
+    });
+
+/*
+  Når tidsperioden ændres,
+  hentes nye data fra API'et
+*/
+document.getElementById("timeSelector")
+    .addEventListener("change", loadData);
+
+
+/*
+  Henter historiske målinger fra backend
+*/
+async function loadData() {
+
+    const minutes = document.getElementById("timeSelector").value;
+
+    // API-kald til Flask backend
+    const res = await fetch(
+        `/api/history?minutes=${minutes === "0" ? "" : minutes}`
+    );
+
+    const data = await res.json();
+
+    // Hvis der ingen data er, stop
+    if (!data.length) return;
+
+    // Gem data til senere brug
+    lastRenderedData = data;
+
+    // Seneste måling
+    const last = data[data.length - 1];
+
+    // Opdater visuelle værdier
+    document.getElementById("bpm").textContent = last.bpm;
+    document.getElementById("spo2").textContent = last.spo2;
+    document.getElementById("temp").textContent =
+        last.temperature.toFixed(1);
+
+    // Opdater patientstatus
+    updateStatus();
+
+    // Tegn graf
+    renderChart(data);
+}
+
+
+/*
+  Henter status og problemer fra /api/stats
+*/
+async function updateStatus() {
+
+    const res = await fetch("/api/stats");
+    const stats = await res.json();
+
+    const statusEl = document.getElementById("statusText");
+    const issuesEl = document.getElementById("issuesList");
+
+    // Sæt status-tekst
+    statusEl.textContent = stats.status;
+
+    // Ryd listen
+    issuesEl.innerHTML = "";
+
+    // Tilføj problemer
+    stats.issues.forEach(i => {
+        const li = document.createElement("li");
+        li.textContent = "• " + i;
+        issuesEl.appendChild(li);
+    });
+
+    /*
+      CSS-klasser bruges til farver:
+      normal / advarsel / kritisk
+    */
+    const className = stats.status.toLowerCase();
+    statusEl.className = "status-text " + className;
+    document.querySelector(".status-card").className =
+        "status-card card " + className;
+}
+
+
+/*
+  Tegner grafen med Chart.js
+*/
+function renderChart(data) {
+
+    const ctx = document.getElementById("chart");
+    const typeSel =
+        document.getElementById("chartTypeSelector").value;
+
+    // X-akse labels (tid)
+    const labels = data.map(d =>
+        new Date(d.timestamp).toLocaleTimeString()
+    );
+
+    // Dataserier
+    const bpm = data.map(d => d.bpm);
+    const spo2 = data.map(d => d.spo2);
+    const temp = data.map(d => d.temperature);
+
+    // Fjern tidligere graf
+    if (chart) chart.destroy();
+
+    // Gradient til linjegraf
+    const gradient =
+        ctx.getContext("2d")
+           .createLinearGradient(0, 0, 0, 450);
+
+    gradient.addColorStop(0, "rgba(74,168,255,0.4)");
+    gradient.addColorStop(1, "rgba(74,168,255,0)");
+
+    // Opret Chart.js graf
+    chart = new Chart(ctx, {
+        type: typeSel,
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: "BPM",
+                    data: bpm,
+                    borderColor: "#4aa8ff",
+                    backgroundColor:
+                        typeSel === "line" ? gradient : "#4aa8ff66",
+                    borderWidth: 3,
+                    fill: typeSel === "line",
+                    tension: 0.35
+                },
+                {
+                    label: "SpO₂",
+                    data: spo2,
+                    borderColor: "#f1c40f",
+                    backgroundColor: "#f1c40f66",
+                    borderWidth: 3,
+                    tension: 0.35
+                },
+                {
+                    label: "Temperatur",
+                    data: temp,
+                    borderColor: "#ff4f4f",
+                    backgroundColor: "#ff4f4f66",
+                    borderWidth: 3,
+                    tension: 0.35
+                }
+            ]
+        },
+        options: {
+            plugins: {
+                legend: { labels: { color: "#fff" } }
+            },
+            scales: {
+                x: { ticks: { color: "#ccc" } },
+                y: { ticks: { color: "#ccc" } }
+            }
+        }
+    });
+}
+
+
+/*
+  Opdaterer data automatisk hvert 2. sekund
+*/
+setInterval(loadData, 2000);
+
+// Hent data ved load
+loadData();
+</script>
+
+</body>
+</html>
