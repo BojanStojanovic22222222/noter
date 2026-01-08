@@ -1,0 +1,178 @@
+/* =========================
+   CSS VARIABLER (ROOT)
+========================= */
+
+/*
+  CSS-variabler gør det nemt at ændre farver og tema ét sted.
+  Bruges konsekvent i hele stylesheetet.
+*/
+:root {
+    --bg-dark: #0c0f14;                 /* Mørk baggrund */
+    --glass: rgba(255,255,255,0.05);    /* Glas-effekt baggrund */
+    --border: rgba(255,255,255,0.12);   /* Halvtransparent kant */
+    --text: #eef3fb;                    /* Standard tekstfarve */
+    --accent: #4aa8ff;                  /* Accentfarve (blå) */
+    --yellow: #f1c40f;                  /* Advarselsfarve */
+    --red: #ff4f4f;                     /* Kritisk farve */
+    --green: #2ecc71;                   /* Normal/OK farve */
+}
+
+
+/* =========================
+   BODY
+========================= */
+
+body {
+    /*
+      Baggrund med gradient
+      Giver moderne, mørkt UI (dark mode)
+    */
+    background: linear-gradient(145deg, #0c0f14, #111827);
+
+    margin: 0;                          /* Fjerner default margin */
+    font-family: 'Inter', sans-serif;  /* Moderne sans-serif font */
+    color: var(--text);                /* Standard tekstfarve */
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+header {
+    padding: 25px 35px;                /* Indvendig afstand */
+    font-size: 1.9rem;                 /* Stor titel */
+    font-weight: 700;                  /* Fed tekst */
+
+    /*
+      Glassmorphism-effekt:
+      - Transparent baggrund
+      - Blur
+    */
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(8px);
+
+    border-bottom: 1px solid var(--border);
+}
+
+
+/* =========================
+   CONTAINER
+========================= */
+
+.container {
+    width: 92%;                        /* Responsiv bredde */
+    max-width: 1300px;                 /* Maksimal bredde */
+    margin: 35px auto;                 /* Centrerer indhold */
+}
+
+
+/* =========================
+   GRID LAYOUT
+========================= */
+
+/*
+  CSS Grid bruges til at vise 3 kort
+  auto-fit gør layoutet responsivt
+*/
+.grid-3 {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(260px,1fr));
+    gap: 25px;
+}
+
+
+/* =========================
+   KORT (CARD)
+========================= */
+
+.card {
+    background: var(--glass);          /* Glas-effekt */
+    border: 1px solid var(--border);
+    padding: 25px;
+    border-radius: 18px;
+
+    backdrop-filter: blur(12px);       /* Blur baggrund */
+    box-shadow: 0 0 25px rgba(0,0,0,0.35); /* Skygge */
+}
+
+
+/* =========================
+   VÆRDIER
+========================= */
+
+.value {
+    margin-top: 10px;
+    font-size: 2.7rem;                 /* Store tal */
+    font-weight: 700;
+}
+
+
+/* =========================
+   STATUSKORT
+========================= */
+
+.status-card h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.status-text {
+    margin-top: 10px;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/*
+  Farver afhænger af patientstatus
+  Klassen sættes dynamisk via JavaScript
+*/
+.status-text.normal {
+    color: var(--green);
+}
+
+.status-text.advarsel {
+    color: var(--yellow);
+    text-shadow: 0 0 8px rgba(241, 196, 15, 0.5);
+}
+
+.status-text.kritisk {
+    color: var(--red);
+    text-shadow: 0 0 12px rgba(255, 79, 79, 0.7);
+}
+
+
+/* =========================
+   ISSUE LISTE
+========================= */
+
+#issuesList {
+    margin-top: 10px;
+    padding-left: 15px;
+}
+
+
+/* =========================
+   GRAF KONTROLLER
+========================= */
+
+.graph-controls {
+    margin-bottom: 20px;
+    display: flex;                     /* Vandret layout */
+    gap: 10px;
+    align-items: center;
+}
+
+
+/* =========================
+   SELECT (DROPDOWN)
+========================= */
+
+select {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    padding: 8px 15px;
+    color: var(--text);
+    border-radius: 10px;
+}
