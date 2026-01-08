@@ -1,0 +1,87 @@
+version: "3.8"
+# Docker Compose filformat version
+# 3.8 er kompatibel med moderne Docker-installationer
+
+
+services:
+  # =========================
+  # FLASK WEB SERVICE
+  # =========================
+  web:
+    # Bygger Docker-image ud fra Dockerfile i samme mappe
+    build: .
+
+    # Navn på containeren (nemmere at identificere)
+    container_name: iot_flask
+
+    # Mapper port 5000 på værtsmaskinen til port 5000 i containeren
+    # Gør Flask API tilgængelig udefra
+    ports:
+      - "5000:5000"
+
+    # Sikrer at databasen er klar før Flask starter
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Indlæser miljøvariabler fra .env-filen
+    env_file:
+      - .env
+
+    # Ekstra miljøvariabler direkte i compose-filen
+    environment:
+      # Database-forbindelsesstreng (bruges af Flask/SQLAlchemy)
+      DATABASE_URL: postgresql://iot_user:iot_password@db:5432/iot_db
+
+      # Angiver at Flask kører i production-mode
+      FLASK_ENV: production
+
+    # Genstarter containeren automatisk ved fejl eller reboot
+    restart: unless-stopped
+
+
+  # =========================
+  # POSTGRES DATABASE SERVICE
+  # =========================
+  db:
+    # Officiel PostgreSQL Docker-image
+    image: postgres:16
+
+    # Containerens navn
+    container_name: iot_postgres
+
+    # Automatisk genstart
+    restart: unless-stopped
+
+    # Miljøvariabler som bruges af PostgreSQL ved opstart
+    environment:
+      POSTGRES_USER: iot_user
+      POSTGRES_PASSWORD: iot_password
+      POSTGRES_DB: iot_db
+
+    # Volume sikrer at data bevares selv hvis containeren slettes
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    # Healthcheck bruges til at teste om databasen er klar
+    healthcheck:
+      # pg_isready tester om PostgreSQL accepterer forbindelser
+      test: ["CMD-SHELL", "pg_isready -U iot_user -d iot_db"]
+
+      # Hvor ofte healthcheck køres
+      interval: 5s
+
+      # Timeout for healthcheck
+      timeout: 5s
+
+      # Antal forsøg før containeren markeres som unhealthy
+      retries: 10
+
+
+# =========================
+# VOLUMES
+# =========================
+volumes:
+  # Persistent storage til PostgreSQL-data
+  # Data overlever container-genstart og opdateringer
+  pgdata:
